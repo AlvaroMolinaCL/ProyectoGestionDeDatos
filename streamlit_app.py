@@ -1,5 +1,4 @@
 import os
-import urllib.request
 from datetime import timedelta
 
 import numpy as np
@@ -7,18 +6,20 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# ========================================
+# FUNCIÓN DE CARGA DE DATOS
+# ========================================
+
 @st.cache_data(show_spinner=False)
-def load_data_from_url(url):
-	"""Descarga y carga datos directamente desde URL. Todo en caché."""
+def load_data_from_upload(uploaded_file):
+	"""Carga datos desde archivo CSV subido por el usuario."""
 	try:
-		with st.spinner('📥 Descargando y cargando datos (~193 MB). Primera vez: 1-3 minutos...'):
-			# Leer directamente desde URL
-			df = pd.read_csv(url, compression='gzip')
-			st.success("✅ Datos cargados exitosamente")
+		with st.spinner('Cargando datos del archivo...'):
+			df = pd.read_csv(uploaded_file)
+			st.success("Datos cargados exitosamente")
 			return df
-			
 	except Exception as e:
-		st.error(f"❌ Error al cargar datos: {e}")
+		st.error(f"Error al cargar el archivo: {e}")
 		return None
 
 
@@ -123,6 +124,10 @@ def process_dataframe(df):
 	return df_agg
 
 
+# ========================================
+# FUNCIONES DE ANÁLISIS
+# ========================================
+
 def compute_indicators(df):
 	"""Calcula indicadores principales del dataset filtrado."""
 	if df.empty:
@@ -201,6 +206,10 @@ def generate_insights(df_filtered):
 
 	return insights
 
+
+# ========================================
+# FUNCIÓN PRINCIPAL
+# ========================================
 
 def main():
 	st.set_page_config(
@@ -336,21 +345,77 @@ def main():
 	st.markdown("Visualización y análisis de datos epidemiológicos")
 	st.markdown("---")
 
-	# URL directa del archivo comprimido
-	DATA_URL = "https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz"
+	# ========================================
+	# CARGA DE DATOS - SUBIR ARCHIVO
+	# ========================================
 	
-	# Cargar datos directamente desde URL (se cachea automáticamente)
-	df_raw = load_data_from_url(DATA_URL)
+	st.sidebar.title("Cargar Datos")
+	
+	# File uploader en el sidebar
+	uploaded_file = st.sidebar.file_uploader(
+		"Sube el archivo COVID-19 (CSV)",
+		type=['csv'],
+		help="Sube un archivo CSV con los datos de COVID-19"
+	)
+	
+	st.sidebar.markdown("---")
+	
+	# Información adicional en sidebar
+	with st.sidebar.expander("Información del archivo"):
+		st.markdown("""
+		**Formato esperado:**
+		- Archivo CSV (.csv)
+		- Columnas requeridas: date, country_region, confirmed, deaths, recovered, active
+		""")
+	
+	# Cargar datos desde archivo subido
+	df_raw = None
+	
+	if uploaded_file is not None:
+		df_raw = load_data_from_upload(uploaded_file)
 	
 	if df_raw is None:
-		st.error("No se pueden cargar los datos. Verifica la conexión o el origen de datos.")
+		# Mostrar pantalla de bienvenida cuando no hay datos
+		st.markdown("""
+		<div style="text-align: center; padding: 3rem 1rem;">
+			<h2 style="color: #e0e0e0;">Bienvenido al Panel COVID-19 Global</h2>
+			<p style="color: #b0b0b0; font-size: 1.1rem; margin-top: 1rem;">
+				Para comenzar, sube un archivo de datos COVID-19 usando el panel lateral.
+			</p>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		col1, col2, col3 = st.columns([1, 2, 1])
+		
+		with col2:
+			st.markdown("""
+			### Características del panel
+			
+			- Visualizar tendencias de casos confirmados, activos, recuperados y fallecidos
+			- Comparar países y continentes
+			- Analizar evolución temporal con gráficos interactivos
+			- Detectar rebrotes mediante análisis de crecimiento
+			- Filtrar datos por fecha, país y continente
+			
+			### Instrucciones
+			
+			1. Prepara un archivo CSV con datos de COVID-19
+			2. Sube el archivo usando el botón en el panel lateral
+			3. Espera a que los datos se carguen
+			4. Explora los datos usando los filtros disponibles
+			
+			---
+			
+			**Nota:** Solo se aceptan archivos CSV sin comprimir
+			""")
+		
 		return
 	
 	# Procesar dataframe
 	df = process_dataframe(df_raw)
-	
+
 	if df is None or df.empty:
-		st.error("No se pueden cargar los datos. Verifica el origen de datos.")
+		st.error("Error al procesar los datos.")
 		return
 
 	# Filtros

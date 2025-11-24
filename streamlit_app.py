@@ -1,22 +1,53 @@
 import os
-import urllib.request
 from datetime import timedelta
+import io
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# ========================================
+# FUNCIONES DE CARGA DE DATOS
+# ========================================
+
 @st.cache_data(show_spinner=False)
-def load_data_from_url(url):
-	"""Descarga y carga datos directamente desde URL. Todo en caché."""
+def load_data_from_google_drive(file_id):
+	"""Descarga y carga datos desde Google Drive usando gdown."""
 	try:
-		with st.spinner('📥 Descargando y cargando datos (~193 MB). Primera vez: 1-3 minutos...'):
-			# Leer directamente desde URL
+		with st.spinner('📥 Descargando datos desde Google Drive (~193 MB). Primera vez: 1-3 minutos...'):
+			import gdown
+			
+			# URL directa para gdown
+			url = f'https://drive.google.com/uc?id={file_id}'
+			
+			# Descargar a un objeto en memoria
+			output = io.BytesIO()
+			gdown.download(url, output, quiet=False, fuzzy=True)
+			output.seek(0)
+			
+			# Leer el CSV comprimido
+			df = pd.read_csv(output, compression='gzip')
+			st.success("✅ Datos cargados exitosamente desde Google Drive")
+			return df
+			
+	except ImportError:
+		st.error("❌ La librería 'gdown' no está instalada. Añade 'gdown' a requirements.txt")
+		return None
+	except Exception as e:
+		st.error(f"❌ Error al cargar datos: {e}")
+		st.info("💡 Verifica que el archivo sea accesible públicamente y que el ID sea correcto")
+		return None
+
+
+@st.cache_data(show_spinner=False)
+def load_data_from_url_simple(url):
+	"""Carga datos desde URL directa (Dropbox, GitHub raw, etc)."""
+	try:
+		with st.spinner('📥 Descargando datos (~193 MB). Primera vez: 1-3 minutos...'):
 			df = pd.read_csv(url, compression='gzip')
 			st.success("✅ Datos cargados exitosamente")
 			return df
-			
 	except Exception as e:
 		st.error(f"❌ Error al cargar datos: {e}")
 		return None
@@ -123,6 +154,10 @@ def process_dataframe(df):
 	return df_agg
 
 
+# ========================================
+# FUNCIONES DE ANÁLISIS
+# ========================================
+
 def compute_indicators(df):
 	"""Calcula indicadores principales del dataset filtrado."""
 	if df.empty:
@@ -201,6 +236,10 @@ def generate_insights(df_filtered):
 
 	return insights
 
+
+# ========================================
+# FUNCIÓN PRINCIPAL
+# ========================================
 
 def main():
 	st.set_page_config(
@@ -336,11 +375,47 @@ def main():
 	st.markdown("Visualización y análisis de datos epidemiológicos")
 	st.markdown("---")
 
-	# URL directa del archivo comprimido
-	DATA_URL = "https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz"
+	# ========================================
+	# CONFIGURACIÓN DE ORIGEN DE DATOS
+	# ========================================
 	
-	# Cargar datos directamente desde URL (se cachea automáticamente)
-	df_raw = load_data_from_url(DATA_URL)
+	# MEJOR OPCIÓN: Dropbox (más confiable que Google Drive)
+	# 1. Sube tu archivo a Dropbox
+	# 2. Click derecho → Compartir → Crear enlace
+	# 3. Copia el link y CAMBIA ?dl=0 por ?dl=1 al final
+	# Ejemplo: https://www.dropbox.com/s/abc123/archivo.csv.gz?dl=1
+	
+	USE_DROPBOX = False  # Cambia a True cuando tengas el link
+	DROPBOX_URL = "https://www.dropbox.com/scl/fi/TU_LINK_AQUI/covid_2020_2022.csv.gz?rlkey=XXXX&dl=1"
+	
+	# Alternativa: GitHub Release (puede funcionar mejor ahora)
+	USE_GITHUB = True
+	GITHUB_URL = "https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz"
+	
+	# Google Drive (problemático para archivos grandes)
+	GOOGLE_DRIVE_FILE_ID = "185x7Rm2g04e304hc_rTLY1et-zymcByC"
+	USE_GOOGLE_DRIVE = False
+	
+	# ========================================
+	# CARGAR DATOS SEGÚN OPCIÓN SELECCIONADA
+	# ========================================
+	
+	df_raw = None
+	
+	if USE_DROPBOX:
+		st.info("📦 Cargando desde Dropbox...")
+		df_raw = load_data_from_url_simple(DROPBOX_URL)
+	elif USE_GITHUB:
+		st.info("📦 Cargando desde GitHub Release...")
+		df_raw = load_data_from_url_simple(GITHUB_URL)
+	elif USE_GOOGLE_DRIVE:
+		st.info("📦 Cargando desde Google Drive...")
+		df_raw = load_data_from_google_drive(GOOGLE_DRIVE_FILE_ID)
+	
+	# Si falla, intentar con GitHub como respaldo
+	if df_raw is None and not USE_GITHUB:
+		st.warning("⚠️ Intentando cargar desde GitHub Release como alternativa...")
+		df_raw = load_data_from_url_simple(GITHUB_URL)
 	
 	if df_raw is None:
 		st.error("No se pueden cargar los datos. Verifica la conexión o el origen de datos.")
@@ -348,9 +423,9 @@ def main():
 	
 	# Procesar dataframe
 	df = process_dataframe(df_raw)
-	
+
 	if df is None or df.empty:
-		st.error("No se pueden cargar los datos. Verifica el origen de datos.")
+		st.error("Error al procesar los datos.")
 		return
 
 	# Filtros

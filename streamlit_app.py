@@ -6,28 +6,16 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# ========================================
-# FUNCIÓN DE CARGA DE DATOS
-# ========================================
-
-@st.cache_data(show_spinner=False)
-def load_data_from_upload(uploaded_file):
-	"""Carga datos desde archivo CSV subido por el usuario."""
-	try:
-		with st.spinner('Cargando datos del archivo...'):
-			df = pd.read_csv(uploaded_file)
-			st.success("Datos cargados exitosamente")
-			return df
-	except Exception as e:
-		st.error(f"Error al cargar el archivo: {e}")
+@st.cache_data
+def load_data(path="data/covid_2020_2022.csv"):
+	"""Carga los datos desde `path`. Maneja el formato real del CSV."""
+	if not os.path.exists(path):
+		st.error(f"Archivo de datos no encontrado: {path}")
 		return None
-
-
-def process_dataframe(df):
-	"""Procesa el dataframe con todas las transformaciones necesarias."""
-	if df is None:
-		return None
-		
+	
+	# Leer CSV
+	df = pd.read_csv(path)
+	
 	# Mapear columnas a nombres estándar
 	column_mapping = {
 		'country_region': 'country',
@@ -124,10 +112,6 @@ def process_dataframe(df):
 	return df_agg
 
 
-# ========================================
-# FUNCIONES DE ANÁLISIS
-# ========================================
-
 def compute_indicators(df):
 	"""Calcula indicadores principales del dataset filtrado."""
 	if df.empty:
@@ -206,10 +190,6 @@ def generate_insights(df_filtered):
 
 	return insights
 
-
-# ========================================
-# FUNCIÓN PRINCIPAL
-# ========================================
 
 def main():
 	st.set_page_config(
@@ -345,77 +325,14 @@ def main():
 	st.markdown("Visualización y análisis de datos epidemiológicos")
 	st.markdown("---")
 
-	# ========================================
-	# CARGA DE DATOS - SUBIR ARCHIVO
-	# ========================================
+	# Cargar datos sin mostrar ruta
+	data_path = "data/covid_2020_2022.csv"
 	
-	st.sidebar.title("Cargar Datos")
+	with st.spinner('Cargando datos...'):
+		df = load_data(data_path)
 	
-	# File uploader en el sidebar
-	uploaded_file = st.sidebar.file_uploader(
-		"Sube el archivo COVID-19 (CSV)",
-		type=['csv'],
-		help="Sube un archivo CSV con los datos de COVID-19"
-	)
-	
-	st.sidebar.markdown("---")
-	
-	# Información adicional en sidebar
-	with st.sidebar.expander("Información del archivo"):
-		st.markdown("""
-		**Formato esperado:**
-		- Archivo CSV (.csv)
-		- Columnas requeridas: date, country_region, confirmed, deaths, recovered, active
-		""")
-	
-	# Cargar datos desde archivo subido
-	df_raw = None
-	
-	if uploaded_file is not None:
-		df_raw = load_data_from_upload(uploaded_file)
-	
-	if df_raw is None:
-		# Mostrar pantalla de bienvenida cuando no hay datos
-		st.markdown("""
-		<div style="text-align: center; padding: 3rem 1rem;">
-			<h2 style="color: #e0e0e0;">Bienvenido al Panel COVID-19 Global</h2>
-			<p style="color: #b0b0b0; font-size: 1.1rem; margin-top: 1rem;">
-				Para comenzar, sube un archivo de datos COVID-19 usando el panel lateral.
-			</p>
-		</div>
-		""", unsafe_allow_html=True)
-		
-		col1, col2, col3 = st.columns([1, 2, 1])
-		
-		with col2:
-			st.markdown("""
-			### Características del panel
-			
-			- Visualizar tendencias de casos confirmados, activos, recuperados y fallecidos
-			- Comparar países y continentes
-			- Analizar evolución temporal con gráficos interactivos
-			- Detectar rebrotes mediante análisis de crecimiento
-			- Filtrar datos por fecha, país y continente
-			
-			### Instrucciones
-			
-			1. Prepara un archivo CSV con datos de COVID-19
-			2. Sube el archivo usando el botón en el panel lateral
-			3. Espera a que los datos se carguen
-			4. Explora los datos usando los filtros disponibles
-			
-			---
-			
-			**Nota:** Solo se aceptan archivos CSV sin comprimir
-			""")
-		
-		return
-	
-	# Procesar dataframe
-	df = process_dataframe(df_raw)
-
 	if df is None or df.empty:
-		st.error("Error al procesar los datos.")
+		st.error("No se pueden cargar los datos. Verifica el origen de datos.")
 		return
 
 	# Filtros

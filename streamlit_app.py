@@ -1,5 +1,7 @@
 import os
 from datetime import timedelta
+import zipfile
+import io
 
 import numpy as np
 import pandas as pd
@@ -12,10 +14,29 @@ import streamlit as st
 
 @st.cache_data(show_spinner=False)
 def load_data_from_upload(uploaded_file):
-	"""Carga datos desde archivo CSV subido por el usuario."""
+	"""Carga datos desde archivo ZIP subido por el usuario."""
 	try:
 		with st.spinner('Cargando datos del archivo...'):
-			df = pd.read_csv(uploaded_file)
+			# Leer el archivo ZIP
+			with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
+				# Obtener lista de archivos en el ZIP
+				file_list = zip_ref.namelist()
+				
+				# Buscar el primer archivo CSV
+				csv_file = None
+				for file_name in file_list:
+					if file_name.endswith('.csv'):
+						csv_file = file_name
+						break
+				
+				if csv_file is None:
+					st.error("No se encontró ningún archivo CSV dentro del ZIP")
+					return None
+				
+				# Leer el CSV desde el ZIP
+				with zip_ref.open(csv_file) as csv_data:
+					df = pd.read_csv(csv_data)
+			
 			st.success("Datos cargados exitosamente")
 			return df
 	except Exception as e:
@@ -353,9 +374,9 @@ def main():
 	
 	# File uploader en el sidebar
 	uploaded_file = st.sidebar.file_uploader(
-		"Sube el archivo COVID-19 (CSV)",
-		type=['csv'],
-		help="Sube un archivo CSV con los datos de COVID-19"
+		"Sube el archivo COVID-19 (ZIP)",
+		type=['zip'],
+		help="Sube un archivo ZIP que contenga un CSV con los datos de COVID-19"
 	)
 	
 	st.sidebar.markdown("---")
@@ -364,8 +385,9 @@ def main():
 	with st.sidebar.expander("Información del archivo"):
 		st.markdown("""
 		**Formato esperado:**
-		- Archivo CSV (.csv)
-		- Columnas requeridas: date, country_region, confirmed, deaths, recovered, active
+		- Archivo ZIP (.zip) que contenga un archivo CSV
+		- El CSV debe tener las columnas: date, country_region, confirmed, deaths, recovered, active
+		- Tamaño máximo: 200 MB
 		""")
 	
 	# Cargar datos desde archivo subido
@@ -400,13 +422,14 @@ def main():
 			### Instrucciones
 			
 			1. Prepara un archivo CSV con datos de COVID-19
-			2. Sube el archivo usando el botón en el panel lateral
-			3. Espera a que los datos se carguen
-			4. Explora los datos usando los filtros disponibles
+			2. Comprime el archivo CSV en formato ZIP
+			3. Sube el archivo ZIP usando el botón en el panel lateral (máximo 200 MB)
+			4. Espera a que los datos se carguen
+			5. Explora los datos usando los filtros disponibles
 			
 			---
 			
-			**Nota:** Solo se aceptan archivos CSV sin comprimir
+			**Nota:** Solo se aceptan archivos ZIP que contengan un CSV
 			""")
 		
 		return

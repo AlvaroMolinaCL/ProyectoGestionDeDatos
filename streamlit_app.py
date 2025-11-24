@@ -14,12 +14,12 @@ import streamlit as st
 def load_data_from_upload(uploaded_file):
 	"""Carga datos desde archivo CSV subido por el usuario."""
 	try:
-		with st.spinner('📊 Cargando datos del archivo...'):
+		with st.spinner('Cargando datos del archivo...'):
 			df = pd.read_csv(uploaded_file)
-			st.success("✅ Datos cargados exitosamente")
+			st.success("Datos cargados exitosamente")
 			return df
 	except Exception as e:
-		st.error(f"❌ Error al cargar el archivo: {e}")
+		st.error(f"Error al cargar el archivo: {e}")
 		return None
 
 
@@ -349,11 +349,11 @@ def main():
 	# CARGA DE DATOS - SUBIR ARCHIVO
 	# ========================================
 	
-	st.sidebar.title("📁 Cargar Datos")
+	st.sidebar.title("Cargar Datos")
 	
 	# File uploader en el sidebar
 	uploaded_file = st.sidebar.file_uploader(
-		"Sube el archivo COVID-19 (.csv)",
+		"Sube el archivo COVID-19 (CSV)",
 		type=['csv'],
 		help="Sube un archivo CSV con los datos de COVID-19"
 	)
@@ -361,16 +361,11 @@ def main():
 	st.sidebar.markdown("---")
 	
 	# Información adicional en sidebar
-	with st.sidebar.expander("ℹ️ Información del archivo"):
+	with st.sidebar.expander("Información del archivo"):
 		st.markdown("""
 		**Formato esperado:**
-		- Archivo CSV (`.csv`)
-		- Columnas: `date`, `country_region`, `confirmed`, `deaths`, `recovered`, `active`
-		
-		**Descarga y descomprime el archivo:**
-		1. Descarga [covid_2020_2022.csv.gz](https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz)
-		2. Descomprime el archivo .gz para obtener el .csv
-		3. Sube el archivo .csv aquí
+		- Archivo CSV (.csv)
+		- Columnas requeridas: date, country_region, confirmed, deaths, recovered, active
 		""")
 	
 	# Cargar datos desde archivo subido
@@ -383,7 +378,7 @@ def main():
 		# Mostrar pantalla de bienvenida cuando no hay datos
 		st.markdown("""
 		<div style="text-align: center; padding: 3rem 1rem;">
-			<h2 style="color: #e0e0e0;">👋 Bienvenido al Panel COVID-19 Global</h2>
+			<h2 style="color: #e0e0e0;">Bienvenido al Panel COVID-19 Global</h2>
 			<p style="color: #b0b0b0; font-size: 1.1rem; margin-top: 1rem;">
 				Para comenzar, sube un archivo de datos COVID-19 usando el panel lateral.
 			</p>
@@ -394,32 +389,24 @@ def main():
 		
 		with col2:
 			st.markdown("""
-			### 📊 ¿Qué puedes hacer con este panel?
+			### Características del panel
 			
-			- **Visualizar tendencias** de casos confirmados, activos, recuperados y fallecidos
-			- **Comparar países** y continentes
-			- **Analizar evolución temporal** con gráficos interactivos
-			- **Detectar rebrotes** mediante análisis de crecimiento
-			- **Filtrar datos** por fecha, país y continente
+			- Visualizar tendencias de casos confirmados, activos, recuperados y fallecidos
+			- Comparar países y continentes
+			- Analizar evolución temporal con gráficos interactivos
+			- Detectar rebrotes mediante análisis de crecimiento
+			- Filtrar datos por fecha, país y continente
 			
-			### 📁 ¿Cómo empezar?
+			### Instrucciones
 			
-			1. Descarga el archivo comprimido:
-			   [covid_2020_2022.csv.gz](https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz)
-			
-			2. **Descomprime el archivo** para obtener el `.csv`
-			   - En Windows: Click derecho → Extraer
-			   - En Mac/Linux: Doble click o usa `gunzip`
-			
-			3. Sube el archivo `.csv` usando el botón **"Browse files"** en el panel lateral
-			
-			4. Espera a que los datos se carguen (puede tardar unos segundos)
-			
-			5. ¡Explora los datos!
+			1. Prepara un archivo CSV con datos de COVID-19
+			2. Sube el archivo usando el botón en el panel lateral
+			3. Espera a que los datos se carguen
+			4. Explora los datos usando los filtros disponibles
 			
 			---
 			
-			**Nota:** Solo se aceptan archivos `.csv` (sin comprimir)
+			**Nota:** Solo se aceptan archivos CSV sin comprimir
 			""")
 		
 		return

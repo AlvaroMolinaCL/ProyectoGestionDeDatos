@@ -10,8 +10,7 @@ import streamlit as st
 def load_data(path="data/covid_2020_2022.csv"):
 	"""Carga los datos desde `path`. Maneja el formato real del CSV."""
 	if not os.path.exists(path):
-		st.error(f"Archivo no encontrado: {path}")
-		st.info("Asegúrate de que el archivo 'covid_2020_2022.csv' esté en la carpeta 'data/'")
+		st.error(f"Archivo de datos no encontrado: {path}")
 		return None
 	
 	# Leer CSV
@@ -164,11 +163,11 @@ def generate_insights(df_filtered):
 	insights = []
 	
 	if df_filtered.empty:
-		return ["No hay datos suficientes para generar insights."]
+		return ["Datos insuficientes para generar análisis."]
 	
 	# Casos nuevos agregados
 	new_cases_total = int(df_filtered["new_confirmed"].sum())
-	insights.append(f"Nuevos casos en rango seleccionado: {new_cases_total:,}")
+	insights.append(f"Nuevos casos en el rango seleccionado: {new_cases_total:,}")
 
 	# Tendencia global (últimos 14 días)
 	agg = df_filtered.groupby("date")["new_confirmed"].sum().sort_index()
@@ -176,12 +175,12 @@ def generate_insights(df_filtered):
 		last14 = agg[-14:].sum()
 		prev14 = agg[-28:-14].sum() if len(agg) >= 28 else 0
 		if prev14 == 0:
-			insights.append("No hay periodo previo completo para comparar tendencia de 14 días.")
+			insights.append("No hay período previo completo para comparar la tendencia de 14 días.")
 		else:
 			change = (last14 - prev14) / prev14
 			pct = change * 100
 			sign = "aumento" if change > 0 else "disminución"
-			insights.append(f"Comparado con 14 días previos: {abs(pct):.1f}% de {sign} en nuevos casos.")
+			insights.append(f"Comparado con los 14 días previos: {abs(pct):.1f}% de {sign} en nuevos casos.")
 
 	# País con mayor nuevos casos
 	by_country = df_filtered.groupby("country")["new_confirmed"].sum()
@@ -193,42 +192,183 @@ def generate_insights(df_filtered):
 
 
 def main():
-	st.set_page_config(page_title="Dashboard COVID", layout="wide")
-	st.title("📊 Dashboard de COVID — ProyectoGestiónDeDatos")
-
-	st.sidebar.header("⚙️ Configuración")
-	data_path = st.sidebar.text_input("Ruta CSV", value="data/covid_2020_2022.csv")
+	st.set_page_config(
+		page_title="Panel COVID-19 Global",
+		layout="wide",
+		initial_sidebar_state="expanded"
+	)
 	
-	# Cargar datos con mensaje de carga
+	# CSS personalizado
+	st.markdown("""
+		<style>
+		/* Fondo principal - gris oscuro */
+		.main {
+			background-color: #1a1a1a;
+		}
+		.stApp {
+			background-color: #1a1a1a;
+		}
+		
+		/* Títulos */
+		h1 {
+			color: #ffffff !important;
+			font-weight: 300 !important;
+			letter-spacing: -0.5px;
+			margin-bottom: 0.5rem;
+			font-size: 2.5rem !important;
+		}
+		h3 {
+			color: #e0e0e0 !important;
+			font-weight: 400;
+			margin-top: 2rem;
+			margin-bottom: 1rem;
+			font-size: 1.3rem;
+		}
+		
+		/* Subtítulo y párrafos */
+		[data-testid="stMarkdownContainer"] p {
+			color: #b0b0b0 !important;
+			font-size: 1rem;
+		}
+		
+		/* Métricas */
+		[data-testid="stMetricLabel"] {
+			color: #888888 !important;
+			font-size: 0.75rem !important;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			font-weight: 500;
+		}
+		[data-testid="stMetricValue"] {
+			font-size: 1.8rem !important;
+			color: #ffffff !important;
+			font-weight: 600;
+		}
+		
+		/* Sidebar */
+		section[data-testid="stSidebar"] {
+			background-color: #252525;
+		}
+		section[data-testid="stSidebar"] h1 {
+			color: #ffffff !important;
+			font-size: 1.5rem !important;
+		}
+		section[data-testid="stSidebar"] label {
+			color: #e0e0e0 !important;
+		}
+		section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+			color: #e0e0e0 !important;
+		}
+		
+		/* Divisores */
+		hr {
+			border-color: #333333 !important;
+			margin: 2rem 0;
+		}
+		
+		/* Botones multiselect */
+		.stMultiSelect [data-baseweb="tag"] {
+			background-color: #ef4444 !important;
+			color: #ffffff !important;
+			border: 1px solid #ef4444 !important;
+		}
+		
+		.stMultiSelect [data-baseweb="tag"]:hover {
+			background-color: #ef4444 !important;
+		}
+		
+		/* Opciones del multiselect */
+		[data-baseweb="popover"] {
+			background-color: #252525 !important;
+		}
+		
+		/* Items del dropdown */
+		[data-baseweb="menu"] {
+			background-color: #252525 !important;
+		}
+		
+		[role="option"] {
+			background-color: #252525 !important;
+			color: #e0e0e0 !important;
+		}
+		
+		[role="option"]:hover {
+			background-color: #333333 !important;
+		}
+		
+		/* Input del multiselect */
+		.stMultiSelect > div > div {
+			background-color: #2a2a2a !important;
+			border-color: #3b82f6 !important;
+		}
+		
+		/* Spinner */
+		.stSpinner > div {
+			border-top-color: #3b82f6 !important;
+		}
+		
+		/* Alertas */
+		.stAlert {
+			background-color: #2a2a2a;
+			border-left: 4px solid;
+		}
+		
+		/* Inputs del sidebar */
+		section[data-testid="stSidebar"] input {
+			background-color: #1a1a1a !important;
+			color: #ffffff !important;
+		}
+		</style>
+	""", unsafe_allow_html=True)
+	
+	st.title("Panel COVID-19 Global")
+	st.markdown("Visualización y análisis de datos epidemiológicos")
+	st.markdown("---")
+
+	# Cargar datos sin mostrar ruta
+	data_path = "data/covid_2020_2022.csv"
+	
 	with st.spinner('Cargando datos...'):
 		df = load_data(data_path)
 	
 	if df is None or df.empty:
-		st.error("No se pudieron cargar los datos. Verifica la ruta del archivo.")
+		st.error("No se pueden cargar los datos. Verifica el origen de datos.")
 		return
 
-	st.sidebar.success(f"✅ Datos cargados: {len(df):,} registros")
-
 	# Filtros
-	st.sidebar.header("🔍 Filtros")
+	st.sidebar.title("Filtros")
 	continents = sorted(df["continent"].dropna().unique())
-	selected_continents = st.sidebar.multiselect("Continente", options=continents, default=continents)
+	selected_continents = st.sidebar.multiselect(
+		"Continente", 
+		options=continents, 
+		default=continents
+	)
 
-	df_cont = df[df["continent"].isin(selected_continents)]
+	# Si no hay continentes seleccionados, usar todos
+	if not selected_continents:
+		df_cont = df
+	else:
+		df_cont = df[df["continent"].isin(selected_continents)]
 
 	countries = sorted(df_cont["country"].unique())
 	selected_countries = st.sidebar.multiselect(
 		"País", 
 		options=countries, 
-		default=countries[:10] if len(countries) > 10 else countries,
-		help="Selecciona uno o más países"
+		default=countries[:10] if len(countries) > 10 else countries
 	)
 
-	df_country = df_cont[df_cont["country"].isin(selected_countries)]
+	# Si no hay países seleccionados, usar todos los disponibles
+	if not selected_countries:
+		df_country = df_cont
+	else:
+		df_country = df_cont[df_cont["country"].isin(selected_countries)]
 
 	min_date = df_country["date"].min()
 	max_date = df_country["date"].max()
-	selected_date = st.sidebar.date_input("Rango de fechas", value=(min_date.date(), max_date.date()))
+	selected_date = st.sidebar.date_input(
+		"Rango de fechas", 
+		value=(min_date.date(), max_date.date())
+	)
 	if isinstance(selected_date, tuple) and len(selected_date) == 2:
 		start_date, end_date = pd.to_datetime(selected_date[0]), pd.to_datetime(selected_date[1])
 	else:
@@ -238,68 +378,167 @@ def main():
 	df_filtered = df_country.loc[mask].copy()
 
 	if df_filtered.empty:
-		st.warning("⚠️ No hay datos para los filtros seleccionados. Ajusta continente/país/fechas.")
+		st.warning("No hay datos disponibles para los filtros seleccionados.")
 		return
 
 	# Indicadores principales
 	indicators, latest = compute_indicators(df_filtered)
 
-	st.markdown("### 📈 Indicadores Principales")
+	st.markdown("### Indicadores Clave")
+	
 	col1, col2, col3, col4 = st.columns(4)
-	col1.metric("Confirmados", f"{indicators['confirmed']:,}")
-	col2.metric("Activos", f"{indicators['active']:,}")
-	col3.metric("Recuperados", f"{indicators['recovered']:,}")
-	col4.metric("Fallecidos", f"{indicators['deaths']:,}")
+	
+	with col1:
+		st.metric(
+			label="Casos Confirmados",
+			value=f"{indicators['confirmed']:,}"
+		)
+	
+	with col2:
+		st.metric(
+			label="Casos Activos",
+			value=f"{indicators['active']:,}"
+		)
+	
+	with col3:
+		st.metric(
+			label="Recuperados",
+			value=f"{indicators['recovered']:,}"
+		)
+	
+	with col4:
+		st.metric(
+			label="Fallecidos",
+			value=f"{indicators['deaths']:,}"
+		)
 
 	# Gráficos
 	st.markdown("---")
-	st.markdown("### 📊 Gráficos Temporales")
+	st.markdown("### Evolución Temporal")
 	
 	timeseries = df_filtered.groupby("date")[["confirmed", "active", "recovered", "deaths"]].sum().reset_index()
-	fig = px.line(timeseries, x="date", y=["confirmed", "active", "recovered", "deaths"],
-				  labels={"value":"Casos", "variable":"Indicador"},
-				  title="Evolución temporal (agregado)")
-	fig.update_layout(hovermode='x unified')
+	fig = px.line(
+		timeseries, 
+		x="date", 
+		y=["confirmed", "active", "recovered", "deaths"],
+		labels={"value":"Casos", "variable":"Indicador", "date":"Fecha"},
+		color_discrete_map={
+			"confirmed": "#ef4444",
+			"active": "#f59e0b",
+			"recovered": "#10b981",
+			"deaths": "#6b7280"
+		}
+	)
+	fig.update_layout(
+		hovermode='x unified',
+		plot_bgcolor='#2a2a2a',
+		paper_bgcolor='#1a1a1a',
+		font=dict(color='#e0e0e0'),
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="right",
+			x=1,
+			font=dict(color='#e0e0e0')
+		),
+		xaxis=dict(
+			gridcolor='#333333',
+			showgrid=True,
+			color='#e0e0e0'
+		),
+		yaxis=dict(
+			gridcolor='#333333',
+			showgrid=True,
+			color='#e0e0e0'
+		)
+	)
 	st.plotly_chart(fig, use_container_width=True)
 
-	st.markdown("### 📊 Nuevos casos (últimos 60 días)")
+	st.markdown("### Nuevos Casos Diarios")
 	new_cases = df_filtered.groupby("date")["new_confirmed"].sum().reset_index()
-	fig2 = px.bar(new_cases.tail(60), x="date", y="new_confirmed", 
-				  title="Nuevos casos diarios",
-				  labels={"new_confirmed": "Nuevos casos", "date": "Fecha"})
+	fig2 = px.bar(
+		new_cases.tail(60), 
+		x="date", 
+		y="new_confirmed",
+		labels={"new_confirmed": "Nuevos Casos", "date": "Fecha"},
+		color_discrete_sequence=["#3b82f6"]
+	)
+	fig2.update_layout(
+		plot_bgcolor='#2a2a2a',
+		paper_bgcolor='#1a1a1a',
+		font=dict(color='#e0e0e0'),
+		xaxis=dict(
+			gridcolor='#333333',
+			showgrid=True,
+			color='#e0e0e0'
+		),
+		yaxis=dict(
+			gridcolor='#333333',
+			showgrid=True,
+			color='#e0e0e0'
+		)
+	)
 	st.plotly_chart(fig2, use_container_width=True)
 
-	st.markdown("### 🌍 Distribución por país")
+	st.markdown("### Distribución por País")
 	last_by_country = df_filtered.sort_values("date").groupby("country").last().reset_index()
-	fig3 = px.bar(last_by_country.sort_values("confirmed", ascending=False).head(20),
-				  x="country", y=["confirmed", "active", "recovered", "deaths"],
-				  title="Top 20 países — últimos valores en el rango",
-				  labels={"value": "Casos", "country": "País"})
+	fig3 = px.bar(
+		last_by_country.sort_values("confirmed", ascending=False).head(20),
+		x="country", 
+		y=["confirmed", "active", "recovered", "deaths"],
+		labels={"value": "Casos", "country": "País"},
+		color_discrete_map={
+			"confirmed": "#ef4444",
+			"active": "#f59e0b",
+			"recovered": "#10b981",
+			"deaths": "#6b7280"
+		}
+	)
+	fig3.update_layout(
+		plot_bgcolor='#2a2a2a',
+		paper_bgcolor='#1a1a1a',
+		font=dict(color='#e0e0e0'),
+		xaxis_tickangle=-45,
+		xaxis=dict(
+			gridcolor='#333333',
+			showgrid=False,
+			color='#e0e0e0'
+		),
+		yaxis=dict(
+			gridcolor='#333333',
+			showgrid=True,
+			color='#e0e0e0'
+		),
+		legend=dict(
+			font=dict(color='#e0e0e0')
+		)
+	)
 	st.plotly_chart(fig3, use_container_width=True)
 
 	# Indicador de rebrote y tasa de crecimiento
 	st.markdown("---")
-	st.markdown("### 🔬 Indicadores de Crecimiento")
+	st.markdown("### Análisis de Crecimiento")
 	
 	total_series = df_filtered.groupby("date")["new_confirmed"].sum().sort_index()
 	ratio, is_rebrote = rebrote_indicator(total_series.values)
 	g_rate = growth_rate(df_filtered.groupby("date")["confirmed"].sum())
 
 	rcol1, rcol2 = st.columns(2)
-	rcol1.metric("Ratio rebrote (últimos 14 vs prev 14)", f"{ratio:.2f}")
-	rcol2.metric("Tasa de crecimiento diaria (media 7 días)", f"{g_rate:.2f}%")
+	rcol1.metric("Ratio de Rebrote (14d vs 14d previos)", f"{ratio:.2f}")
+	rcol2.metric("Tasa de Crecimiento Diaria (promedio 7d)", f"{g_rate:.2f}%")
 	
 	if is_rebrote:
-		st.error("⚠️ Alerta: indicadores muestran señales de rebrote.")
+		st.error("Alerta: Los indicadores muestran señales de rebrote.")
 	else:
-		st.success("✅ No se detecta rebrote significativo según el umbral actual.")
+		st.success("No se detecta rebrote significativo.")
 
 	# Insights automáticos
 	st.markdown("---")
-	st.markdown("### 💡 Insights Automáticos")
+	st.markdown("### Análisis Automático")
 	insights = generate_insights(df_filtered)
 	for insight in insights:
-		st.write("• ", insight)
+		st.markdown(f"- {insight}")
 
 
 if __name__ == "__main__":

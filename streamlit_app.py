@@ -1,6 +1,5 @@
 import os
 from datetime import timedelta
-import io
 
 import numpy as np
 import pandas as pd
@@ -8,48 +7,19 @@ import plotly.express as px
 import streamlit as st
 
 # ========================================
-# FUNCIONES DE CARGA DE DATOS
+# FUNCIÓN DE CARGA DE DATOS
 # ========================================
 
 @st.cache_data(show_spinner=False)
-def load_data_from_google_drive(file_id):
-	"""Descarga y carga datos desde Google Drive usando gdown."""
+def load_data_from_upload(uploaded_file):
+	"""Carga datos desde archivo CSV subido por el usuario."""
 	try:
-		with st.spinner('📥 Descargando datos desde Google Drive (~193 MB). Primera vez: 1-3 minutos...'):
-			import gdown
-			
-			# URL directa para gdown
-			url = f'https://drive.google.com/uc?id={file_id}'
-			
-			# Descargar a un objeto en memoria
-			output = io.BytesIO()
-			gdown.download(url, output, quiet=False, fuzzy=True)
-			output.seek(0)
-			
-			# Leer el CSV comprimido
-			df = pd.read_csv(output, compression='gzip')
-			st.success("✅ Datos cargados exitosamente desde Google Drive")
-			return df
-			
-	except ImportError:
-		st.error("❌ La librería 'gdown' no está instalada. Añade 'gdown' a requirements.txt")
-		return None
-	except Exception as e:
-		st.error(f"❌ Error al cargar datos: {e}")
-		st.info("💡 Verifica que el archivo sea accesible públicamente y que el ID sea correcto")
-		return None
-
-
-@st.cache_data(show_spinner=False)
-def load_data_from_url_simple(url):
-	"""Carga datos desde URL directa (Dropbox, GitHub raw, etc)."""
-	try:
-		with st.spinner('📥 Descargando datos (~193 MB). Primera vez: 1-3 minutos...'):
-			df = pd.read_csv(url, compression='gzip')
+		with st.spinner('📊 Cargando datos del archivo...'):
+			df = pd.read_csv(uploaded_file)
 			st.success("✅ Datos cargados exitosamente")
 			return df
 	except Exception as e:
-		st.error(f"❌ Error al cargar datos: {e}")
+		st.error(f"❌ Error al cargar el archivo: {e}")
 		return None
 
 
@@ -376,49 +346,82 @@ def main():
 	st.markdown("---")
 
 	# ========================================
-	# CONFIGURACIÓN DE ORIGEN DE DATOS
+	# CARGA DE DATOS - SUBIR ARCHIVO
 	# ========================================
 	
-	# MEJOR OPCIÓN: Dropbox (más confiable que Google Drive)
-	# 1. Sube tu archivo a Dropbox
-	# 2. Click derecho → Compartir → Crear enlace
-	# 3. Copia el link y CAMBIA ?dl=0 por ?dl=1 al final
-	# Ejemplo: https://www.dropbox.com/s/abc123/archivo.csv.gz?dl=1
+	st.sidebar.title("📁 Cargar Datos")
 	
-	USE_DROPBOX = False  # Cambia a True cuando tengas el link
-	DROPBOX_URL = "https://www.dropbox.com/scl/fi/TU_LINK_AQUI/covid_2020_2022.csv.gz?rlkey=XXXX&dl=1"
+	# File uploader en el sidebar
+	uploaded_file = st.sidebar.file_uploader(
+		"Sube el archivo COVID-19 (.csv)",
+		type=['csv'],
+		help="Sube un archivo CSV con los datos de COVID-19"
+	)
 	
-	# Alternativa: GitHub Release (puede funcionar mejor ahora)
-	USE_GITHUB = True
-	GITHUB_URL = "https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz"
+	st.sidebar.markdown("---")
 	
-	# Google Drive (problemático para archivos grandes)
-	GOOGLE_DRIVE_FILE_ID = "185x7Rm2g04e304hc_rTLY1et-zymcByC"
-	USE_GOOGLE_DRIVE = False
+	# Información adicional en sidebar
+	with st.sidebar.expander("ℹ️ Información del archivo"):
+		st.markdown("""
+		**Formato esperado:**
+		- Archivo CSV (`.csv`)
+		- Columnas: `date`, `country_region`, `confirmed`, `deaths`, `recovered`, `active`
+		
+		**Descarga y descomprime el archivo:**
+		1. Descarga [covid_2020_2022.csv.gz](https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz)
+		2. Descomprime el archivo .gz para obtener el .csv
+		3. Sube el archivo .csv aquí
+		""")
 	
-	# ========================================
-	# CARGAR DATOS SEGÚN OPCIÓN SELECCIONADA
-	# ========================================
-	
+	# Cargar datos desde archivo subido
 	df_raw = None
 	
-	if USE_DROPBOX:
-		st.info("📦 Cargando desde Dropbox...")
-		df_raw = load_data_from_url_simple(DROPBOX_URL)
-	elif USE_GITHUB:
-		st.info("📦 Cargando desde GitHub Release...")
-		df_raw = load_data_from_url_simple(GITHUB_URL)
-	elif USE_GOOGLE_DRIVE:
-		st.info("📦 Cargando desde Google Drive...")
-		df_raw = load_data_from_google_drive(GOOGLE_DRIVE_FILE_ID)
-	
-	# Si falla, intentar con GitHub como respaldo
-	if df_raw is None and not USE_GITHUB:
-		st.warning("⚠️ Intentando cargar desde GitHub Release como alternativa...")
-		df_raw = load_data_from_url_simple(GITHUB_URL)
+	if uploaded_file is not None:
+		df_raw = load_data_from_upload(uploaded_file)
 	
 	if df_raw is None:
-		st.error("No se pueden cargar los datos. Verifica la conexión o el origen de datos.")
+		# Mostrar pantalla de bienvenida cuando no hay datos
+		st.markdown("""
+		<div style="text-align: center; padding: 3rem 1rem;">
+			<h2 style="color: #e0e0e0;">👋 Bienvenido al Panel COVID-19 Global</h2>
+			<p style="color: #b0b0b0; font-size: 1.1rem; margin-top: 1rem;">
+				Para comenzar, sube un archivo de datos COVID-19 usando el panel lateral.
+			</p>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		col1, col2, col3 = st.columns([1, 2, 1])
+		
+		with col2:
+			st.markdown("""
+			### 📊 ¿Qué puedes hacer con este panel?
+			
+			- **Visualizar tendencias** de casos confirmados, activos, recuperados y fallecidos
+			- **Comparar países** y continentes
+			- **Analizar evolución temporal** con gráficos interactivos
+			- **Detectar rebrotes** mediante análisis de crecimiento
+			- **Filtrar datos** por fecha, país y continente
+			
+			### 📁 ¿Cómo empezar?
+			
+			1. Descarga el archivo comprimido:
+			   [covid_2020_2022.csv.gz](https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz)
+			
+			2. **Descomprime el archivo** para obtener el `.csv`
+			   - En Windows: Click derecho → Extraer
+			   - En Mac/Linux: Doble click o usa `gunzip`
+			
+			3. Sube el archivo `.csv` usando el botón **"Browse files"** en el panel lateral
+			
+			4. Espera a que los datos se carguen (puede tardar unos segundos)
+			
+			5. ¡Explora los datos!
+			
+			---
+			
+			**Nota:** Solo se aceptan archivos `.csv` (sin comprimir)
+			""")
+		
 		return
 	
 	# Procesar dataframe

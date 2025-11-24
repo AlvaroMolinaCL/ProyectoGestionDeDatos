@@ -7,52 +7,26 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-def download_file_once(path, github_url):
-	"""Descarga el archivo solo si no existe. NO usa caché de Streamlit."""
-	if os.path.exists(path):
-		return  # Ya existe, no descargar
-	
-	try:
-		# Crear directorio data si no existe
-		os.makedirs("data", exist_ok=True)
-		
-		# Crear barra de progreso
-		progress_bar = st.progress(0)
-		status_text = st.empty()
-		
-		def reporthook(blocknum, blocksize, totalsize):
-			"""Actualiza barra de progreso."""
-			downloaded = blocknum * blocksize
-			if totalsize > 0:
-				percent = min(downloaded / totalsize, 1.0)
-				progress_bar.progress(percent)
-				status_text.text(f"Descargando: {downloaded / (1024*1024):.1f} MB / {totalsize / (1024*1024):.1f} MB ({percent*100:.1f}%)")
-		
-		st.info("📥 Descargando datos comprimidos desde GitHub Release (~193 MB)...")
-		st.warning("⚠️ Primera carga: esto puede tomar 1-3 minutos. Luego será instantáneo.")
-		urllib.request.urlretrieve(github_url, path, reporthook=reporthook)
-		progress_bar.empty()
-		status_text.empty()
-		st.success("✅ Datos descargados exitosamente")
-		
-	except Exception as e:
-		st.error(f"❌ Error al descargar datos: {e}")
-		raise
-
-
 @st.cache_data(show_spinner=False)
-def load_data(path="data/covid_2020_2022.csv.gz"):
-	"""Carga los datos desde `path`. Se cachea automáticamente."""
-	
-	# Verificar que el archivo exista
-	if not os.path.exists(path):
-		st.error(f"Archivo de datos no encontrado: {path}")
+def load_data_from_url(url):
+	"""Descarga y carga datos directamente desde URL. Todo en caché."""
+	try:
+		with st.spinner('📥 Descargando y cargando datos (~193 MB). Primera vez: 1-3 minutos...'):
+			# Leer directamente desde URL
+			df = pd.read_csv(url, compression='gzip')
+			st.success("✅ Datos cargados exitosamente")
+			return df
+			
+	except Exception as e:
+		st.error(f"❌ Error al cargar datos: {e}")
 		return None
-	
-	# Leer CSV (pandas detecta automáticamente si está comprimido)
-	with st.spinner('📊 Cargando datos en memoria...'):
-		df = pd.read_csv(path, compression='gzip' if path.endswith('.gz') else None)
-	
+
+
+def process_dataframe(df):
+	"""Procesa el dataframe con todas las transformaciones necesarias."""
+	if df is None:
+		return None
+		
 	# Mapear columnas a nombres estándar
 	column_mapping = {
 		'country_region': 'country',
@@ -362,15 +336,18 @@ def main():
 	st.markdown("Visualización y análisis de datos epidemiológicos")
 	st.markdown("---")
 
-	# Configuración de datos
-	GITHUB_RELEASE_URL = "https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz"
-	data_path = "data/covid_2020_2022.csv.gz"
+	# URL directa del archivo comprimido
+	DATA_URL = "https://github.com/AlvaroMolinaCL/ProyectoGestionDeDatos/releases/download/v1.0/covid_2020_2022.csv.gz"
 	
-	# Descargar archivo solo si no existe (fuera del caché)
-	download_file_once(data_path, GITHUB_RELEASE_URL)
+	# Cargar datos directamente desde URL (se cachea automáticamente)
+	df_raw = load_data_from_url(DATA_URL)
 	
-	# Cargar datos (esto SÍ se cachea y no se repite)
-	df = load_data(data_path)
+	if df_raw is None:
+		st.error("No se pueden cargar los datos. Verifica la conexión o el origen de datos.")
+		return
+	
+	# Procesar dataframe
+	df = process_dataframe(df_raw)
 	
 	if df is None or df.empty:
 		st.error("No se pueden cargar los datos. Verifica el origen de datos.")

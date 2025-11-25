@@ -18,6 +18,7 @@ def load_data(path = "data/covid_2020_2023.csv"):
 	
 	# Mapear columnas a nombres estándar
 	column_mapping = {
+		'last_update': 'date',
 		'country_region': 'country',
 		'province_state': 'province',
 		'confirmed': 'confirmed',

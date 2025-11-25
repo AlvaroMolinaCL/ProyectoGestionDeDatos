@@ -7,7 +7,7 @@ import plotly.express as px
 import streamlit as st
 
 @st.cache_data
-def load_data(path="data/covid_2020_2022.csv"):
+def load_data(path = "data/covid_2020_2023.csv"):
 	"""Carga los datos desde `path`. Maneja el formato real del CSV."""
 	if not os.path.exists(path):
 		st.error(f"Archivo de datos no encontrado: {path}")
@@ -23,39 +23,39 @@ def load_data(path="data/covid_2020_2022.csv"):
 		'confirmed': 'confirmed',
 		'deaths': 'deaths',
 		'recovered': 'recovered',
-		'active': 'active'
+		'active_cases': 'active'
 	}
 	
 	# Renombrar columnas si existen
-	df = df.rename(columns=column_mapping)
+	df = df.rename(columns = column_mapping)
 	
 	# Convertir fecha
 	if "date" in df.columns:
 		df["date"] = pd.to_datetime(df["date"])
 	else:
-		raise ValueError("El dataset debe contener una columna 'date'")
+		raise ValueError("El DataFrame debe contener una columna 'date'.")
 	
 	# Asegurar columnas necesarias
 	for col in ["confirmed", "deaths"]:
 		if col not in df.columns:
 			df[col] = 0
 		else:
-			df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+			df[col] = pd.to_numeric(df[col], errors = 'coerce').fillna(0)
 	
 	# Manejar columna recovered
 	if "recovered" not in df.columns:
 		df["recovered"] = 0
 	else:
-		df["recovered"] = pd.to_numeric(df["recovered"], errors='coerce').fillna(0)
+		df["recovered"] = pd.to_numeric(df["recovered"], errors = 'coerce').fillna(0)
 	
 	# Calcular activos si no existe
 	if "active" not in df.columns or df["active"].isna().all():
 		df["active"] = df["confirmed"] - df["recovered"] - df["deaths"]
 	else:
-		df["active"] = pd.to_numeric(df["active"], errors='coerce').fillna(0)
+		df["active"] = pd.to_numeric(df["active"], errors = 'coerce').fillna(0)
 	
 	# Asegurar que active no sea negativo
-	df["active"] = df["active"].clip(lower=0)
+	df["active"] = df["active"].clip(lower = 0)
 	
 	# Agregar continente basado en país (mapeo básico)
 	continent_map = {
@@ -135,25 +135,25 @@ def compute_indicators(df):
 	return indicators, latest
 
 
-def rebrote_indicator(series_new_cases, window_recent=14, window_prev=14, threshold=1.2):
+def rebrote_indicator(series_new_cases, window_recent = 14, window_prev = 14, threshold = 1.2):
 	"""Calcula si hay rebrote comparando medias móviles recientes vs previas."""
 	if len(series_new_cases) < (window_recent + window_prev):
 		return 0.0, False
 
-	recent_mean = series_new_cases[-window_recent:].mean()
-	prev_mean = series_new_cases[-(window_recent + window_prev) : -window_recent].mean()
+	recent_mean = series_new_cases[- window_recent:].mean()
+	prev_mean = series_new_cases[- (window_recent + window_prev) : - window_recent].mean()
 	if prev_mean == 0:
 		return float("inf") if recent_mean > 0 else 0.0, recent_mean > 0
 	ratio = recent_mean / prev_mean
 	return float(ratio), ratio >= threshold
 
 
-def growth_rate(series_confirmed, days=7):
+def growth_rate(series_confirmed, days = 7):
 	"""Calcula tasa de crecimiento media diaria (%) en los últimos `days` días."""
 	s = series_confirmed.dropna()
 	if len(s) < days + 1:
 		return 0.0
-	recent = s[-(days + 1) :]
+	recent = s[- (days + 1) :]
 	daily_pct = recent.pct_change().dropna()
 	return float(daily_pct.mean() * 100)
 
@@ -172,8 +172,8 @@ def generate_insights(df_filtered):
 	# Tendencia global (últimos 14 días)
 	agg = df_filtered.groupby("date")["new_confirmed"].sum().sort_index()
 	if len(agg) >= 14:
-		last14 = agg[-14:].sum()
-		prev14 = agg[-28:-14].sum() if len(agg) >= 28 else 0
+		last14 = agg[- 14:].sum()
+		prev14 = agg[- 28:- 14].sum() if len(agg) >= 28 else 0
 		if prev14 == 0:
 			insights.append("No hay período previo completo para comparar la tendencia de 14 días.")
 		else:
@@ -193,9 +193,9 @@ def generate_insights(df_filtered):
 
 def main():
 	st.set_page_config(
-		page_title="Panel COVID-19 Global",
-		layout="wide",
-		initial_sidebar_state="expanded"
+		page_title = "Panel COVID-19 Global",
+		layout = "wide",
+		initial_sidebar_state = "expanded"
 	)
 	
 	# CSS personalizado
@@ -326,7 +326,7 @@ def main():
 	st.markdown("---")
 
 	# Cargar datos sin mostrar ruta
-	data_path = "data/covid_2020_2022.csv"
+	data_path = "data/covid_2020_2023.csv"
 	
 	with st.spinner('Cargando datos...'):
 		df = load_data(data_path)
@@ -340,8 +340,8 @@ def main():
 	continents = sorted(df["continent"].dropna().unique())
 	selected_continents = st.sidebar.multiselect(
 		"Continente", 
-		options=continents, 
-		default=continents
+		options = continents, 
+		default = continents
 	)
 
 	# Si no hay continentes seleccionados, usar todos
@@ -353,8 +353,8 @@ def main():
 	countries = sorted(df_cont["country"].unique())
 	selected_countries = st.sidebar.multiselect(
 		"País", 
-		options=countries, 
-		default=countries[:10] if len(countries) > 10 else countries
+		options = countries, 
+		default = countries[:10] if len(countries) > 10 else countries
 	)
 
 	# Si no hay países seleccionados, usar todos los disponibles
@@ -367,7 +367,7 @@ def main():
 	max_date = df_country["date"].max()
 	selected_date = st.sidebar.date_input(
 		"Rango de fechas", 
-		value=(min_date.date(), max_date.date())
+		value = (min_date.date(), max_date.date())
 	)
 	if isinstance(selected_date, tuple) and len(selected_date) == 2:
 		start_date, end_date = pd.to_datetime(selected_date[0]), pd.to_datetime(selected_date[1])
@@ -390,26 +390,26 @@ def main():
 	
 	with col1:
 		st.metric(
-			label="Casos Confirmados",
-			value=f"{indicators['confirmed']:,}"
+			label = "Casos Confirmados",
+			value = f"{indicators['confirmed']:,}"
 		)
 	
 	with col2:
 		st.metric(
-			label="Casos Activos",
-			value=f"{indicators['active']:,}"
+			label = "Casos Activos",
+			value = f"{indicators['active']:,}"
 		)
 	
 	with col3:
 		st.metric(
-			label="Recuperados",
-			value=f"{indicators['recovered']:,}"
+			label = "Recuperados",
+			value = f"{indicators['recovered']:,}"
 		)
 	
 	with col4:
 		st.metric(
-			label="Fallecidos",
-			value=f"{indicators['deaths']:,}"
+			label = "Fallecidos",
+			value = f"{indicators['deaths']:,}"
 		)
 
 	# Gráficos
@@ -419,10 +419,10 @@ def main():
 	timeseries = df_filtered.groupby("date")[["confirmed", "active", "recovered", "deaths"]].sum().reset_index()
 	fig = px.line(
 		timeseries, 
-		x="date", 
-		y=["confirmed", "active", "recovered", "deaths"],
-		labels={"value":"Casos", "variable":"Indicador", "date":"Fecha"},
-		color_discrete_map={
+		x = "date", 
+		y = ["confirmed", "active", "recovered", "deaths"],
+		labels = {"value":"Casos", "variable":"Indicador", "date":"Fecha"},
+		color_discrete_map = {
 			"confirmed": "#ef4444",
 			"active": "#f59e0b",
 			"recovered": "#10b981",
@@ -430,65 +430,65 @@ def main():
 		}
 	)
 	fig.update_layout(
-		hovermode='x unified',
-		plot_bgcolor='#2a2a2a',
-		paper_bgcolor='#1a1a1a',
-		font=dict(color='#e0e0e0'),
-		legend=dict(
-			orientation="h",
-			yanchor="bottom",
-			y=1.02,
-			xanchor="right",
-			x=1,
-			font=dict(color='#e0e0e0')
+		hovermode = 'x unified',
+		plot_bgcolor = '#2a2a2a',
+		paper_bgcolor = '#1a1a1a',
+		font = dict(color = '#e0e0e0'),
+		legend = dict(
+			orientation = "h",
+			yanchor = "bottom",
+			y = 1.02,
+			xanchor = "right",
+			x = 1,
+			font = dict(color = '#e0e0e0')
 		),
-		xaxis=dict(
-			gridcolor='#333333',
-			showgrid=True,
-			color='#e0e0e0'
+		xaxis = dict(
+			gridcolor = '#333333',
+			showgrid = True,
+			color = '#e0e0e0'
 		),
-		yaxis=dict(
-			gridcolor='#333333',
-			showgrid=True,
-			color='#e0e0e0'
+		yaxis = dict(
+			gridcolor = '#333333',
+			showgrid = True,
+			color = '#e0e0e0'
 		)
 	)
-	st.plotly_chart(fig, use_container_width=True)
+	st.plotly_chart(fig, use_container_width = True)
 
 	st.markdown("### Nuevos Casos Diarios")
 	new_cases = df_filtered.groupby("date")["new_confirmed"].sum().reset_index()
 	fig2 = px.bar(
 		new_cases.tail(60), 
-		x="date", 
-		y="new_confirmed",
-		labels={"new_confirmed": "Nuevos Casos", "date": "Fecha"},
-		color_discrete_sequence=["#3b82f6"]
+		x = "date", 
+		y = "new_confirmed",
+		labels = {"new_confirmed": "Nuevos Casos", "date": "Fecha"},
+		color_discrete_sequence = ["#3b82f6"]
 	)
 	fig2.update_layout(
-		plot_bgcolor='#2a2a2a',
-		paper_bgcolor='#1a1a1a',
-		font=dict(color='#e0e0e0'),
-		xaxis=dict(
-			gridcolor='#333333',
-			showgrid=True,
-			color='#e0e0e0'
+		plot_bgcolor = '#2a2a2a',
+		paper_bgcolor = '#1a1a1a',
+		font = dict(color = '#e0e0e0'),
+		xaxis = dict(
+			gridcolor = '#333333',
+			showgrid = True,
+			color = '#e0e0e0'
 		),
-		yaxis=dict(
-			gridcolor='#333333',
-			showgrid=True,
-			color='#e0e0e0'
+		yaxis = dict(
+			gridcolor = '#333333',
+			showgrid = True,
+			color = '#e0e0e0'
 		)
 	)
-	st.plotly_chart(fig2, use_container_width=True)
+	st.plotly_chart(fig2, use_container_width = True)
 
 	st.markdown("### Distribución por País")
 	last_by_country = df_filtered.sort_values("date").groupby("country").last().reset_index()
 	fig3 = px.bar(
-		last_by_country.sort_values("confirmed", ascending=False).head(20),
-		x="country", 
-		y=["confirmed", "active", "recovered", "deaths"],
-		labels={"value": "Casos", "country": "País"},
-		color_discrete_map={
+		last_by_country.sort_values("confirmed", ascending = False).head(20),
+		x = "country", 
+		y = ["confirmed", "active", "recovered", "deaths"],
+		labels = {"value": "Casos", "country": "País"},
+		color_discrete_map = {
 			"confirmed": "#ef4444",
 			"active": "#f59e0b",
 			"recovered": "#10b981",
@@ -496,25 +496,25 @@ def main():
 		}
 	)
 	fig3.update_layout(
-		plot_bgcolor='#2a2a2a',
-		paper_bgcolor='#1a1a1a',
-		font=dict(color='#e0e0e0'),
-		xaxis_tickangle=-45,
-		xaxis=dict(
-			gridcolor='#333333',
-			showgrid=False,
-			color='#e0e0e0'
+		plot_bgcolor = '#2a2a2a',
+		paper_bgcolor = '#1a1a1a',
+		font = dict(color = '#e0e0e0'),
+		xaxis_tickangle = -45,
+		xaxis = dict(
+			gridcolor = '#333333',
+			showgrid = False,
+			color = '#e0e0e0'
 		),
-		yaxis=dict(
-			gridcolor='#333333',
-			showgrid=True,
-			color='#e0e0e0'
+		yaxis = dict(
+			gridcolor = '#333333',
+			showgrid = True,
+			color = '#e0e0e0'
 		),
-		legend=dict(
-			font=dict(color='#e0e0e0')
+		legend = dict(
+			font = dict(color = '#e0e0e0')
 		)
 	)
-	st.plotly_chart(fig3, use_container_width=True)
+	st.plotly_chart(fig3, use_container_width = True)
 
 	# Indicador de rebrote y tasa de crecimiento
 	st.markdown("---")
